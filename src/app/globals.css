@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", monospace;
+  --font-label: "Geist", sans-serif;
+  --font-pixel: "Press Start 2P", monospace;
+  --color-red-brand: #dc2626;
+  --color-red-brand-light: #ef4444;
+  --color-surface-light: #f4f4f5;
+}
+
+html, body {
+  background: #f4f4f5;
+  color: #171717;
+  font-family: var(--font-body);
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background: #dc2626;
+  color: #fff;
+}
+
+.btn-modern {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+.btn-modern:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+.btn-modern:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.brand-retro {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.red-glow {
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.2);
+}
+.red-glow-text {
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.25);
+}
+.glow-line {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(220, 38, 38, 0.2), transparent);
+}
+
+.timeline-node::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  background: #dc2626;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(220, 38, 38, 0.4);
+  border: 2px solid #ffffff;
+}
+
+pre code {
+  font-family: var(--font-mono);
+}
