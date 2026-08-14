@@ -29,7 +29,8 @@ export const skills = [
   },
 ];
 
-export const projects: any[] = [];
+// Projects are managed via Admin Dashboard → Firestore. This empty array is kept for backward compatibility.
+export const projects: { name: string; category: string; desc: string; tech: string[]; image?: string }[] = [];
 
 export const timeline = [
   {

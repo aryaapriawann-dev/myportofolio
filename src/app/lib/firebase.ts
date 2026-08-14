@@ -1,5 +1,11 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -19,3 +25,21 @@ if (!getApps().length) {
 
 export const db = getFirestore(app);
 export const firebaseApp = app;
+
+export const saveDoc = async (path: string, id: string, data: Record<string, unknown>) => {
+  const ref = doc(db, path, id);
+  await setDoc(ref, data, { merge: false });
+  return ref;
+};
+
+export const updateDocById = async (path: string, id: string, data: Partial<Record<string, unknown>>) => {
+  const ref = doc(db, path, id);
+  await updateDoc(ref, data);
+  return ref;
+};
+
+export const deleteDocById = async (path: string, id: string) => {
+  const ref = doc(db, path, id);
+  await deleteDoc(ref);
+  return ref;
+};

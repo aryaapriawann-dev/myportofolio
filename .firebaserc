@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "my-compeni-arya"
-  }
+    "default": "portofolio-arya-apriawan"
+  },
+  "targets": {},
+  "etags": {}
 }

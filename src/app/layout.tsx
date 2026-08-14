@@ -18,6 +18,14 @@ export const metadata: Metadata = {
   title: "Softvision — Crafted Digital",
   description:
     "Software house yang menggabungkan sistem clean, cinematic UI, dan AI-first.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/images/mentah-logo-softvesion.png", type: "image/png" },
+    ],
+    shortcut: "/images/mentah-logo-softvesion.png",
+    apple: "/images/mentah-logo-softvesion.png",
+  },
 };
 
 export default function RootLayout({
@@ -27,9 +35,25 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" className={`${display.variable} ${body.variable} antialiased`}>
-      <body className="min-h-screen bg-[#f4f4f5] text-neutral-900 antialiased">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
+      </head>
+      <body className="min-h-screen bg-[#f4f4f5] dark:bg-[#09090b] text-neutral-900 dark:text-zinc-50 transition-colors duration-300 antialiased">
         {children}
       </body>
     </html>
   );
 }
+

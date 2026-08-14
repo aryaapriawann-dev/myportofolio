@@ -1,18 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
 import { X } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
-import { projects as staticProjects } from "@/app/lib/data";
 import { founderAchievements as staticFounderAchievements } from "@/app/lib/data";
 import { founderCertificates as staticFounderCertificates } from "@/app/lib/data";
 import { skills as staticSkills } from "@/app/lib/data";
 import { clients as staticClients } from "@/app/lib/data";
-
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "@/app/lib/firebase";
 
 type Achievement = {
   image: string;
@@ -24,6 +20,7 @@ type Achievement = {
 };
 
 type Project = {
+  id?: string;
   name: string;
   category: string;
   desc: string;
@@ -32,6 +29,7 @@ type Project = {
 };
 
 type Certificate = {
+  id?: string;
   image: string;
   title: string;
   issuer?: string;
@@ -48,160 +46,116 @@ const socialLinks = [
   { name: "X", src: "https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/x.svg", alt: "X", href: "https://x.com/AApriawan28031" },
 ];
 
-const readSession = <T,>(key: string, fallback: T): T => {
-  try {
-    if (typeof window === "undefined") return fallback;
-    const raw = window.sessionStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-};
+/* Helper: check if an image src is a base64 data URI */
+const isDataUri = (src?: string) => src?.startsWith("data:");
 
-const computeStats = () => {
-  const projects = readSession<Project[]>("admin_projects", staticProjects);
-  const certificates = readSession<Certificate[]>("admin_certificates", []);
-  const adminAchievements = readSession<Achievement[]>("admin_achievements", []);
-
-  const projectCount = projects.length;
-
-  const techSet = new Set<string>();
-  projects.forEach((p) => p.tech?.forEach((t) => {
-    if (t && t.trim()) techSet.add(t.trim());
-  }));
-  staticSkills.forEach((s) => s.items?.forEach((i) => {
-    if (i.name && i.name.trim()) techSet.add(i.name.trim());
-  }));
-  const techCount = techSet.size;
-
-  const staticAchievements: Achievement[] = [
-    ...staticFounderAchievements.map((a) => ({ ...a, type: "Prestasi" as const })),
-    ...staticFounderCertificates.map((a) => ({ ...a, type: "Sertifikat" as const })),
-  ];
-  const allAchievements = adminAchievements.length > 0 ? adminAchievements : staticAchievements;
-
-  const certCount = allAchievements.length;
-
-  const clientCount = staticClients.length + (projects.length - staticProjects.length) * 2;
-
-  return [
-    { n: String(projectCount), l: "projects" },
-    { n: String(techCount), l: "tech stacks" },
-    { n: String(certCount), l: "certifications" },
-    { n: String(clientCount) + "+", l: "clients" },
-  ];
-};
-
-export default function Founder() {
+export default function Founder({
+  certificates,
+  projects,
+}: {
+  certificates?: Certificate[];
+  projects?: Project[];
+}) {
   const [showAll, setShowAll] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [isFlipped, setIsFlipped] = useState(false);
-  
-  const [founderStats, setFounderStats] = useState(() => {
-    const projectCount = staticProjects.length;
+
+  /* ──── Compute stats from Firestore props ──── */
+  const founderStats = (() => {
+    // Projects count — use Firestore data if available
+    const projectList = projects ?? [];
+    const projectCount = projectList.length;
+
+    // Tech stacks — aggregate from projects + static skills
     const techSet = new Set<string>();
-    staticProjects.forEach((p: any) => p.tech?.forEach((t: string) => {
-      if (t && t.trim()) techSet.add(t.trim());
-    }));
-    staticSkills.forEach((s: any) => s.items?.forEach((i: any) => {
-      if (i.name && i.name.trim()) techSet.add(i.name.trim());
-    }));
+    projectList.forEach((p) =>
+      p.tech?.forEach((t) => {
+        if (t && t.trim()) techSet.add(t.trim());
+      })
+    );
+    staticSkills.forEach((s) =>
+      s.items?.forEach((i) => {
+        if (i.name && i.name.trim()) techSet.add(i.name.trim());
+      })
+    );
     const techCount = techSet.size;
-    const staticAchievementsCount = staticFounderAchievements.length + staticFounderCertificates.length;
-    const clientCount = staticClients.length;
+
+    // Certifications count — static achievements + Firestore certificates
+    const certCount = staticFounderAchievements.length + (certificates?.length ?? staticFounderCertificates.length);
+
+    // Clients count
+    const clientCount = staticClients.length + (projectCount > 0 ? Math.max(0, projectCount - 1) * 2 : 0);
 
     return [
       { n: String(projectCount), l: "projects" },
       { n: String(techCount), l: "tech stacks" },
-      { n: String(staticAchievementsCount), l: "certifications" },
+      { n: String(certCount), l: "certifications" },
       { n: String(clientCount) + "+", l: "clients" },
     ];
-  });
+  })();
 
-  useEffect(() => {
-    let active = true;
+  /* ──── Build achievements list from Firestore certificates ──── */
+  const achievements: Achievement[] = (() => {
+    // Always include static achievements (Prestasi)
+    const list: Achievement[] = [
+      ...staticFounderAchievements.map((a) => ({ ...a, type: "Prestasi" as const })),
+    ];
 
-    async function fetchStats() {
-      try {
-        // Fetch projects from Firestore
-        const projectsSnapshot = await getDocs(collection(db, "projects"));
-        if (!active) return;
+    const seenTitles = new Set<string>();
 
-        // Fetch certifications from Firestore
-        const certSnapshot = await getDocs(collection(db, "certifications"));
-        if (!active) return;
-
-        const projectDocs = projectsSnapshot.docs.map(doc => doc.data() as Project);
-
-        const projectCount = projectsSnapshot.size;
-        const certCount = certSnapshot.size;
-
-        // Tech stacks calculation
-        const techSet = new Set<string>();
-        // Add tech from Firestore projects
-        projectDocs.forEach((p) => p.tech?.forEach((t) => {
-          if (t && t.trim()) techSet.add(t.trim());
-        }));
-        // Fallback to static skills list to ensure a healthy base tech count
-        staticSkills.forEach((s) => s.items?.forEach((i) => {
-          if (i.name && i.name.trim()) techSet.add(i.name.trim());
-        }));
-        const techCount = techSet.size;
-
-        // Clients calculation
-        const clientsSet = new Set<string>();
-        projectDocs.forEach((p: any) => {
-          if (p.client && typeof p.client === "string" && p.client.trim()) {
-            clientsSet.add(p.client.trim());
-          }
+    // If Firestore certificates are available, use them
+    if (certificates !== undefined) {
+      certificates.forEach((c) => {
+        const titleKey = c.title.toLowerCase().trim();
+        list.push({
+          image: c.image,
+          title: c.title,
+          issuer: c.issuer || "",
+          year: c.year || "",
+          description: c.description || "",
+          type: "Sertifikat" as const,
         });
-        
-        let clientCount = clientsSet.size;
-        if (clientCount === 0) {
-          // Fallback to mock value if no clients found in projects
-          clientCount = staticClients.length + (projectCount > staticProjects.length ? (projectCount - staticProjects.length) * 2 : 0);
-        }
+        seenTitles.add(titleKey);
+      });
 
-        setFounderStats([
-          { n: String(projectCount), l: "projects" },
-          { n: String(techCount), l: "tech stacks" },
-          { n: String(certCount), l: "certifications" },
-          { n: String(clientCount) + "+", l: "clients" },
-        ]);
-      } catch (error) {
-        console.error("Error fetching Firestore stats:", error);
-        // Fallback to local session storage / static computation if Firestore fails
-        setFounderStats(computeStats());
-      }
+      // Add static certificates that aren't already in Firestore (dedup by title)
+      staticFounderCertificates.forEach((c) => {
+        const titleKey = c.title.toLowerCase().trim();
+        if (!seenTitles.has(titleKey)) {
+          list.push({
+            image: c.image,
+            title: c.title,
+            issuer: c.issuer || "",
+            year: c.year || "",
+            description: "",
+            type: "Sertifikat" as const,
+          });
+          seenTitles.add(titleKey);
+        }
+      });
+    } else {
+      // Fallback to static certificates when Firestore hasn't loaded yet
+      staticFounderCertificates.forEach((c) => {
+        list.push({
+          image: c.image,
+          title: c.title,
+          issuer: c.issuer || "",
+          year: c.year || "",
+          description: "",
+          type: "Sertifikat" as const,
+        });
+      });
     }
 
-    fetchStats();
+    return list;
+  })();
 
-    // Listen to local session storage storage/focus changes as fallback
-    const handleStorageChange = () => setFounderStats(computeStats());
-    window.addEventListener("storage", handleStorageChange);
-    window.addEventListener("focus", handleStorageChange);
-
-    return () => {
-      active = false;
-      window.removeEventListener("storage", handleStorageChange);
-      window.removeEventListener("focus", handleStorageChange);
-    };
-  }, []);
-
-  const staticAchievements: Achievement[] = [
-    ...staticFounderAchievements.map((a) => ({ ...a, type: "Prestasi" as const })),
-    ...staticFounderCertificates.map((a) => ({ ...a, type: "Sertifikat" as const })),
-  ];
-  const adminAchievements = readSession<Achievement[]>("admin_achievements", []);
-  const achievements = adminAchievements.length > 0 ? adminAchievements : staticAchievements;
   const visibleItems = showAll ? achievements : achievements.slice(0, 3);
 
   return (
-    <section className="rounded-3xl border border-zinc-200/60 bg-white/70 p-6 md:p-12 shadow-sm backdrop-blur-md">
+    <section className="rounded-3xl border border-zinc-200/60 dark:border-zinc-800/60 bg-white/70 dark:bg-zinc-900/70 p-6 md:p-12 shadow-sm backdrop-blur-md">
       <div className="grid gap-8 md:grid-cols-12 md:gap-12">
-        {/* Founder Left Image - 3D Flip */}
+        {/* Founder Left Image */}
         <div className="relative md:col-span-5 flex flex-col justify-start">
           <div
             className="relative cursor-pointer group"
@@ -215,26 +169,118 @@ export default function Founder() {
                 transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
               }}
             >
-              {/* Front - Foto Founder */}
+              {/* Front - Foto Founder dengan efek HUD */}
               <div
                 className="backface-hidden"
-                style={{
-                  backfaceVisibility: "hidden",
-                  WebkitBackfaceVisibility: "hidden",
-                }}
+                style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}
               >
-                <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white p-2.5 shadow-sm transition-transform duration-300 group-hover:shadow-md">
-                  <img
-                    alt="Arya Apriawan"
-                    className="h-full w-full object-cover rounded-xl"
-                    src="/images/aryaapriawan.jpeg"
-                  />
+                <div className="relative overflow-hidden rounded-2xl shadow-lg">
+
+                  {/* Outer glow border berdenyut */}
+                  <motion.div
+                    className="absolute -inset-[2px] rounded-2xl z-10 pointer-events-none"
+                    animate={{ opacity: [0.4, 1, 0.4] }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                    style={{
+                      background: "linear-gradient(135deg, rgba(220,38,38,0.8) 0%, rgba(220,38,38,0.1) 50%, rgba(220,38,38,0.8) 100%)",
+                      padding: "2px",
+                    }}
+                  >
+                    <div className="w-full h-full rounded-2xl bg-transparent" />
+                  </motion.div>
+
+                  {/* Foto */}
+                  <div className="relative rounded-2xl overflow-hidden">
+                    <Image
+                      src="/images/aryaapriawan.jpeg"
+                      alt="Arya Apriawan"
+                      width={600}
+                      height={600}
+                      className="h-full w-full object-cover rounded-2xl transition-transform duration-500 group-hover:scale-[1.03]"
+                    />
+
+                    {/* Overlay gradient bawah */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent rounded-2xl pointer-events-none" />
+
+                    {/* Scan line effect */}
+                    <motion.div
+                      className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-red-500/80 to-transparent pointer-events-none z-20"
+                      animate={{ top: ["0%", "100%", "0%"] }}
+                      transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                    />
+
+                    {/* HUD corner brackets */}
+                    {/* Top Left */}
+                    <div className="absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2 border-red-500 rounded-tl-sm z-20 pointer-events-none" />
+                    {/* Top Right */}
+                    <div className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 border-red-500 rounded-tr-sm z-20 pointer-events-none" />
+                    {/* Bottom Left */}
+                    <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 border-red-500 rounded-bl-sm z-20 pointer-events-none" />
+                    {/* Bottom Right */}
+                    <div className="absolute bottom-3 right-3 w-6 h-6 border-b-2 border-r-2 border-red-500 rounded-br-sm z-20 pointer-events-none" />
+
+                    {/* Status badge - top */}
+                    <motion.div
+                      className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 rounded-full bg-black/60 backdrop-blur-sm border border-white/10 px-3 py-1 pointer-events-none"
+                      animate={{ y: [0, -3, 0] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+                      <span className="font-label text-[8px] uppercase tracking-widest text-green-400 font-bold">Available</span>
+                    </motion.div>
+
+                    {/* Name badge - bottom */}
+                    <div className="absolute bottom-0 left-0 right-0 p-4 z-30 pointer-events-none">
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                      >
+                        <p className="font-bold text-white text-base leading-tight drop-shadow">Arya Apriawan</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="font-label text-[9px] uppercase tracking-widest text-red-400">Founder & Lead Engineer</span>
+                        </div>
+                      </motion.div>
+                    </div>
+
+                    {/* Floating particles */}
+                    {[...Array(5)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className="absolute w-1 h-1 rounded-full bg-red-500/70 pointer-events-none z-20"
+                        style={{
+                          left: `${15 + i * 18}%`,
+                          top: `${20 + i * 12}%`,
+                        }}
+                        animate={{
+                          y: [-6, 6, -6],
+                          opacity: [0.3, 1, 0.3],
+                          scale: [0.8, 1.2, 0.8],
+                        }}
+                        transition={{
+                          duration: 2 + i * 0.4,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: i * 0.3,
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
+
+                {/* Hint klik flip */}
+                <motion.p
+                  className="text-center font-label text-[8px] uppercase tracking-widest text-neutral-400 dark:text-zinc-600 mt-2"
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  Klik untuk lihat sosial media
+                </motion.p>
               </div>
 
               {/* Back - Social Media */}
               <div
-                className="absolute inset-0 flex flex-col items-center justify-center gap-4 rounded-2xl border border-zinc-200 bg-neutral-900 p-6 text-center"
+                className="absolute inset-0 flex flex-col items-center justify-center gap-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-neutral-900 dark:bg-zinc-950 p-6 text-center"
                 style={{
                   transform: "rotateY(180deg)",
                   backfaceVisibility: "hidden",
@@ -256,12 +302,13 @@ export default function Founder() {
                       className="flex flex-col items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-3 transition-all duration-200 hover:border-red-500/50 hover:bg-red-500/10"
                       aria-label={social.name}
                     >
-                      <img
+                      <Image
                         src={social.src}
                         alt={social.alt}
                         width={28}
                         height={28}
                         className="rounded-lg object-contain"
+                        unoptimized
                       />
                       <span className="font-label text-[9px] uppercase tracking-wider text-neutral-400">
                         {social.name}
@@ -272,25 +319,16 @@ export default function Founder() {
               </div>
             </div>
           </div>
-          <div className="hidden md:block">
-            <div className="mt-4 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-lg">
-              <p className="font-semibold text-sm text-neutral-900">Arya Apriawan</p>
-              <p className="font-label text-[9px] uppercase tracking-widest text-neutral-500 mt-0.5">
-                Founder & Lead Engineer
-              </p>
-            </div>
-          </div>
         </div>
-
         {/* Founder Right Details */}
         <div className="md:col-span-7 flex flex-col justify-center">
-          <span className="font-label text-[10px] font-semibold uppercase tracking-widest text-red-600">
-            02 // THE ARCHITECT
+          <span className="font-label text-[10px] font-semibold uppercase tracking-widest text-red-600 dark:text-red-500">
+            02 // PENDIRI
           </span>
-          <h2 className="mt-3 text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl lg:text-4xl leading-tight">
-            Expertise in Cognitive Systems
+          <h2 className="mt-3 text-2xl font-bold tracking-tight text-neutral-900 dark:text-white md:text-3xl lg:text-4xl leading-tight">
+            Spesialisasi Sistem Kognitif & AI
           </h2>
-          <p className="mt-4 text-sm leading-relaxed text-neutral-600">
+          <p className="mt-4 text-sm leading-relaxed text-neutral-600 dark:text-zinc-400">
             Spesialis di persimpangan Software Development, Artificial Intelligence,
             dan Computer Vision. Mengembangkan sistem cerdas dan arsitektur produk digital
             skala enterprise yang andal untuk tantangan teknologi generasi baru.
@@ -299,9 +337,9 @@ export default function Founder() {
           {/* Stats Grid */}
           <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
             {founderStats.map((s) => (
-              <div key={s.l} className="rounded-xl border border-zinc-200/40 bg-white/40 p-4 text-center">
-                <span className="block text-2xl font-bold text-red-brand">{s.n}</span>
-                <span className="font-label text-[9px] uppercase tracking-widest text-neutral-500 mt-1 block">
+              <div key={s.l} className="rounded-xl border border-zinc-200/40 dark:border-zinc-800/40 bg-white/40 dark:bg-zinc-900/40 p-4 text-center">
+                <span className="block text-2xl font-bold text-red-brand dark:text-red-500">{s.n}</span>
+                <span className="font-label text-[9px] uppercase tracking-widest text-neutral-500 dark:text-zinc-400 mt-1 block">
                   {s.l}
                 </span>
               </div>
@@ -310,7 +348,7 @@ export default function Founder() {
 
           {/* Achievements Sub-Section */}
           <div className="mt-10">
-            <h3 className="font-label text-[10px] font-semibold uppercase tracking-widest text-red-600">
+            <h3 className="font-label text-[10px] font-semibold uppercase tracking-widest text-red-600 dark:text-red-500">
               Prestasi & Sertifikat
             </h3>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -319,26 +357,35 @@ export default function Founder() {
                   key={`${item.type}-${idx}`}
                   type="button"
                   onClick={() => item.image && setPreview(item.image)}
-                  className="rounded-2xl border border-zinc-200/60 bg-white/60 p-4 shadow-sm backdrop-blur-md transition-all duration-300 hover:border-zinc-300 hover:shadow-md text-left w-full flex flex-col h-full"
+                  className="rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 bg-white/60 dark:bg-zinc-900/60 p-4 shadow-sm backdrop-blur-md transition-all duration-300 hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-md text-left w-full flex flex-col h-full cursor-pointer"
                 >
-                  <Image
-                    src={item.image}
-                    alt={item.title}
-                    width={600}
-                    height={400}
-                    className="mb-3 h-28 w-full rounded-xl border border-zinc-200/40 object-cover select-none"
-                  />
+                  {isDataUri(item.image) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="mb-3 h-28 w-full rounded-xl border border-zinc-200/40 dark:border-zinc-800/40 object-cover select-none"
+                    />
+                  ) : (
+                    <Image
+                      src={item.image}
+                      alt={item.title}
+                      width={600}
+                      height={400}
+                      className="mb-3 h-28 w-full rounded-xl border border-zinc-200/40 dark:border-zinc-800/40 object-cover select-none"
+                    />
+                  )}
                   <div className="flex-1 flex flex-col">
-                    <span className="font-label text-[9px] font-semibold uppercase tracking-widest text-red-600">
+                    <span className="font-label text-[9px] font-semibold uppercase tracking-widest text-red-600 dark:text-red-500">
                       {item.type}
                     </span>
-                    <p className="mt-1.5 text-xs font-semibold text-neutral-900 line-clamp-2">
+                    <p className="mt-1.5 text-xs font-semibold text-neutral-900 dark:text-zinc-100 line-clamp-2">
                       {item.title}
                     </p>
-                    <p className="mt-1 text-[11px] text-neutral-500 font-medium">
+                    <p className="mt-1 text-[11px] text-neutral-500 dark:text-zinc-400 font-medium">
                       {item.issuer}
                     </p>
-                    <p className="mt-1 text-[10px] text-neutral-400 line-clamp-2 leading-relaxed">
+                    <p className="mt-1 text-[10px] text-neutral-400 dark:text-zinc-500 line-clamp-2 leading-relaxed">
                       {item.description}
                     </p>
                   </div>
@@ -351,7 +398,7 @@ export default function Founder() {
                 <button
                   type="button"
                   onClick={() => setShowAll((v) => !v)}
-                  className="btn-modern inline-flex items-center justify-center rounded-lg bg-neutral-900 hover:bg-neutral-800 px-5 py-2.5 font-label text-[10px] font-bold uppercase tracking-widest text-white shadow-sm transition duration-200"
+                  className="btn-modern inline-flex items-center justify-center rounded-lg bg-neutral-900 dark:bg-zinc-100 hover:bg-neutral-800 dark:hover:bg-zinc-200 px-5 py-2.5 font-label text-[10px] font-bold uppercase tracking-widest text-white dark:text-zinc-950 shadow-sm transition duration-200 cursor-pointer"
                 >
                   {showAll ? "Tampilkan Lebih Sedikit" : "Lihat Semua"}
                 </button>
@@ -385,17 +432,27 @@ export default function Founder() {
               >
                 <X size={16} />
               </button>
-              <Image
-                src={preview}
-                alt="Preview sertifikat"
-                width={1200}
-                height={800}
-                className="max-h-[82vh] w-full rounded-lg object-contain"
-              />
+              {isDataUri(preview) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={preview}
+                  alt="Preview sertifikat"
+                  className="max-h-[82vh] w-full rounded-lg object-contain"
+                />
+              ) : (
+                <Image
+                  src={preview}
+                  alt="Preview sertifikat"
+                  width={1200}
+                  height={800}
+                  className="max-h-[82vh] w-full rounded-lg object-contain"
+                />
+              )}
             </motion.div>
           </motion.div>
         ) : null}
       </AnimatePresence>
     </section>
+
   );
 }

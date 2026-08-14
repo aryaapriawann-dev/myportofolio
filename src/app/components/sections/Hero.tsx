@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 import Button from "@/app/components/ui/Button";
 
 export default function Hero() {
@@ -15,14 +16,14 @@ export default function Hero() {
           </span>
         </div>
         
-        <h1 className="mt-5 text-4xl font-extrabold leading-[1.08] tracking-tight text-neutral-900 sm:text-5xl md:text-6xl lg:text-7xl">
+        <h1 className="mt-5 text-4xl font-extrabold leading-[1.08] tracking-tight text-neutral-900 dark:text-zinc-50 sm:text-5xl md:text-6xl lg:text-7xl">
           Mengubah Ide Menjadi <br />
           <span className="text-red-brand bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent">
             Solusi Digital Cerdas
           </span>
         </h1>
         
-        <p className="mt-5 max-w-xl text-sm leading-relaxed text-neutral-600 sm:text-base">
+        <p className="mt-5 max-w-xl text-sm leading-relaxed text-neutral-600 dark:text-zinc-400 sm:text-base">
           Pengembangan Software House modern dengan sistem clean, cinematic UI, dan integrasi Artificial Intelligence. Kami merancang masa depan bisnis Anda dengan teknologi paling mutakhir.
         </p>
         
@@ -79,9 +80,11 @@ export default function Hero() {
             whileHover={{ scale: 1.03 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
           >
-            <img
+            <Image
               src="/images/mentah-logo-softvesion.png"
               alt="Logo SOFTVISION"
+              width={224}
+              height={224}
               className="h-40 w-auto drop-shadow-[0_0_30px_rgba(220,38,38,0.25)] md:h-56 select-none"
             />
 
@@ -91,7 +94,7 @@ export default function Hero() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 1 }}
             >
-              <span className="font-label text-sm font-bold tracking-[0.25em] text-neutral-800">
+              <span className="font-label text-sm font-bold tracking-[0.25em] text-neutral-800 dark:text-zinc-200">
                 SOFTVISION
               </span>
             </motion.div>

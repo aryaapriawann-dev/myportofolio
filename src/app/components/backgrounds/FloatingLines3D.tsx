@@ -92,8 +92,17 @@ export default function FloatingLines3D() {
     resize();
     window.addEventListener('resize', resize);
 
-    const drawGrid = (w: number, h: number) => {
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.02)';
+    // Respawn semua line saat tema berubah
+    const observer = new MutationObserver(() => {
+      lines.current = Array.from({ length: 50 }, () => createLine(true));
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    const drawGrid = (w: number, h: number, isDark: boolean) => {
+      ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.015)' : 'rgba(0, 0, 0, 0.02)';
       ctx.lineWidth = 1;
       const gridSize = 80;
       
@@ -114,8 +123,10 @@ export default function FloatingLines3D() {
       const h = canvas.height;
       ctx.clearRect(0, 0, w, h);
 
+      const isDark = document.documentElement.classList.contains('dark');
+
       // 1. Draw Grid
-      drawGrid(w, h);
+      drawGrid(w, h, isDark);
 
       // 2. Draw Lines
       for (let i = 0; i < lines.current.length; i++) {
@@ -136,11 +147,19 @@ export default function FloatingLines3D() {
           continue;
         }
 
+        // Adapt colors based on dark mode dynamically
+        let drawColor = line.color;
+        if (line.color === BLACK) {
+          drawColor = isDark ? [113, 113, 122] : BLACK; // zinc-500 in dark mode
+        } else if (line.color === WHITE) {
+          drawColor = isDark ? WHITE : [212, 212, 216]; // zinc-300 in light mode
+        }
+
         // Draw line with gradient from tail to head
         const grad = ctx.createLinearGradient(line.x - dx, line.y - dy, line.x, line.y);
-        grad.addColorStop(0, `rgba(${line.color[0]},${line.color[1]},${line.color[2]},0)`);
-        grad.addColorStop(0.3, `rgba(${line.color[0]},${line.color[1]},${line.color[2]},${line.opacity * 0.25})`);
-        grad.addColorStop(1, `rgba(${line.color[0]},${line.color[1]},${line.color[2]},${line.opacity})`);
+        grad.addColorStop(0, `rgba(${drawColor[0]},${drawColor[1]},${drawColor[2]},0)`);
+        grad.addColorStop(0.3, `rgba(${drawColor[0]},${drawColor[1]},${drawColor[2]},${line.opacity * 0.25})`);
+        grad.addColorStop(1, `rgba(${drawColor[0]},${drawColor[1]},${drawColor[2]},${line.opacity})`);
 
         ctx.beginPath();
         ctx.moveTo(line.x - dx, line.y - dy);
@@ -153,27 +172,32 @@ export default function FloatingLines3D() {
         // Draw glowing head dot
         const dotRadius = Math.max(1.8, line.thickness * 1.5);
         ctx.save();
-        if (line.color === RED) {
+        if (drawColor === RED) {
           ctx.shadowColor = `rgba(${RED[0]},${RED[1]},${RED[2]},0.75)`;
           ctx.shadowBlur = 8;
         } else if (line.color === WHITE) {
-          ctx.shadowColor = 'rgba(255,255,255,0.7)';
+          ctx.shadowColor = isDark ? 'rgba(255,255,255,0.7)' : 'rgba(212,212,216,0.5)';
           ctx.shadowBlur = 6;
+        } else if (line.color === BLACK && isDark) {
+          ctx.shadowColor = 'rgba(113,113,122,0.4)';
+          ctx.shadowBlur = 5;
         }
         ctx.beginPath();
         ctx.arc(line.x, line.y, dotRadius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${line.color[0]},${line.color[1]},${line.color[2]},${line.opacity})`;
+        ctx.fillStyle = `rgba(${drawColor[0]},${drawColor[1]},${drawColor[2]},${line.opacity})`;
         ctx.fill();
         ctx.restore();
       }
 
+
       requestAnimationFrame(draw);
     };
 
-    let animationFrameId = requestAnimationFrame(draw);
+    const animationFrameId = requestAnimationFrame(draw);
 
     return () => {
       window.removeEventListener('resize', resize);
+      observer.disconnect();
       cancelAnimationFrame(animationFrameId);
     };
   }, []);

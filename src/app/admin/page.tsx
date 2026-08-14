@@ -3,28 +3,34 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminPanel from '@/app/components/admin/AdminPanel';
+import FloatingLines3D from '@/app/components/backgrounds/FloatingLines3D';
 
 export default function AdminPage() {
   const router = useRouter();
-  const [ready, setReady] = useState(false);
-  const [authed, setAuthed] = useState<boolean>(() =>
-    typeof document !== 'undefined' ? document.cookie.includes('oft_admin=1') : false
-  );
+  const [authed, setAuthed] = useState<boolean | null>(null);
 
   useEffect(() => {
-    setReady(true);
-  }, []);
-
-  useEffect(() => {
-    if (!authed) {
-      try {
-        router.replace('/admin/login');
-      } catch {
-        // ignore hydration/transition errors
-      }
+    const isAuth = document.cookie.includes('oft_admin=1');
+    setAuthed(isAuth);
+    if (!isAuth) {
+      router.replace('/admin/login');
     }
-  }, [authed, router]);
+  }, [router]);
 
-  if (!ready || !authed) return null;
-  return <AdminPanel />;
+  if (!authed) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-neutral-500">
+        Mengalihkan ke halaman login...
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative min-h-screen">
+      <FloatingLines3D />
+      <div className="relative z-10">
+        <AdminPanel />
+      </div>
+    </div>
+  );
 }
