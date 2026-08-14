@@ -1,5 +1,5 @@
 -- 1. Table Reviews
-CREATE TABLE reviews (
+CREATE TABLE IF NOT EXISTS reviews (
   id TEXT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   role TEXT,
@@ -9,7 +9,7 @@ CREATE TABLE reviews (
 );
 
 -- 2. Table Projects
-CREATE TABLE projects (
+CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   category TEXT,
@@ -22,7 +22,7 @@ CREATE TABLE projects (
 );
 
 -- 3. Table Certificates
-CREATE TABLE certificates (
+CREATE TABLE IF NOT EXISTS certificates (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   issuer TEXT,
@@ -35,7 +35,7 @@ CREATE TABLE certificates (
 );
 
 -- 4. Table Timeline (Experiences/Milestones)
-CREATE TABLE timeline (
+CREATE TABLE IF NOT EXISTS timeline (
   id TEXT PRIMARY KEY,
   q TEXT NOT NULL,
   title TEXT NOT NULL,
@@ -44,7 +44,7 @@ CREATE TABLE timeline (
 );
 
 -- 5. Table Contacts
-CREATE TABLE contacts (
+CREATE TABLE IF NOT EXISTS contacts (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   email TEXT NOT NULL,
@@ -52,24 +52,61 @@ CREATE TABLE contacts (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Row Level Security (RLS) Rules
-ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
-ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE certificates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE timeline ENABLE ROW LEVEL SECURITY;
-ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
+-- Hapus policy lama jika ada
+DROP POLICY IF EXISTS "Public insert/update/delete certificates" ON certificates;
+DROP POLICY IF EXISTS "Public read certificates" ON certificates;
+DROP POLICY IF EXISTS "Public insert/update/delete projects" ON projects;
+DROP POLICY IF EXISTS "Public read projects" ON projects;
+DROP POLICY IF EXISTS "Public insert/update/delete timeline" ON timeline;
+DROP POLICY IF EXISTS "Public read timeline" ON timeline;
 
--- Public Policies
-CREATE POLICY "Public read reviews" ON reviews FOR SELECT USING (true);
-CREATE POLICY "Public insert reviews" ON reviews FOR INSERT WITH CHECK (true);
+-- Matikan RLS
+ALTER TABLE reviews DISABLE ROW LEVEL SECURITY;
+ALTER TABLE projects DISABLE ROW LEVEL SECURITY;
+ALTER TABLE certificates DISABLE ROW LEVEL SECURITY;
+ALTER TABLE timeline DISABLE ROW LEVEL SECURITY;
+ALTER TABLE contacts DISABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Public read projects" ON projects FOR SELECT USING (true);
-CREATE POLICY "Public insert/update/delete projects" ON projects FOR ALL USING (true);
+-- ───────────────────────────────────────────────────────────────
+-- GRANT: Wajib! DISABLE RLS saja TIDAK cukup di Postgres/Supabase.
+-- Tanpa GRANT ini, role "anon" (yang dipakai anon key di frontend)
+-- tetap ditolak dengan error "42501 permission denied".
+-- Ini penyebab utama upload gagal & "sering gak ketampil".
+-- Idempoten: aman dijalankan berulang.
+-- ───────────────────────────────────────────────────────────────
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE reviews TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE projects TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE certificates TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE timeline TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE contacts TO anon, authenticated;
 
-CREATE POLICY "Public read certificates" ON certificates FOR SELECT USING (true);
-CREATE POLICY "Public insert/update/delete certificates" ON certificates FOR ALL USING (true);
-
-CREATE POLICY "Public read timeline" ON timeline FOR SELECT USING (true);
-CREATE POLICY "Public insert/update/delete timeline" ON timeline FOR ALL USING (true);
-
-CREATE POLICY "Public insert contacts" ON contacts FOR INSERT WITH CHECK (true);
+-- ───────────────────────────────────────────────────────────────
+-- REALTIME: supaya upload dari admin langsung tampil di homepage
+-- Tanpa ini, postgres_changes di page.tsx/AdminPanel tidak akan
+-- memicu refresh -> upload "sering gak ketampil" sampai refresh manual.
+-- Idempoten: aman dijalankan berulang kali.
+-- ───────────────────────────────────────────────────────────────
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  -- Pastikan replikasi realtime aktif di level database (Supabase managed)
+  IF EXISTS (
+    SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime'
+  ) THEN
+    FOR r IN
+      SELECT 'certificates' AS t UNION ALL
+      SELECT 'projects' AS t UNION ALL
+      SELECT 'timeline' AS t UNION ALL
+      SELECT 'reviews' AS t UNION ALL
+      SELECT 'contacts' AS t
+    LOOP
+      BEGIN
+        EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE %I', r.t);
+      EXCEPTION WHEN duplicate_object THEN
+        -- sudah terdaftar, abaikan
+        NULL;
+      END;
+    END LOOP;
+  END IF;
+END $$;

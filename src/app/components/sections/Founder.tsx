@@ -6,12 +6,9 @@ import { X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { founderAchievements as staticFounderAchievements } from "@/app/lib/data";
-import { founderCertificates as staticFounderCertificates } from "@/app/lib/data";
-import { skills as staticSkills } from "@/app/lib/data";
-import { clients as staticClients } from "@/app/lib/data";
 
 type Achievement = {
-  image: string;
+  image?: string | null;
   title: string;
   issuer: string;
   year: string;
@@ -30,13 +27,13 @@ type Project = {
 
 type Certificate = {
   id?: string;
-  image: string;
+  image?: string | null;
   title: string;
-  issuer?: string;
-  year?: string;
-  description?: string;
-  credentialId?: string;
-  status?: string;
+  issuer?: string | null;
+  year?: string | null;
+  description?: string | null;
+  credentialId?: string | null;
+  status?: string | null;
 };
 
 const socialLinks = [
@@ -47,7 +44,7 @@ const socialLinks = [
 ];
 
 /* Helper: check if an image src is a base64 data URI */
-const isDataUri = (src?: string) => src?.startsWith("data:");
+const isDataUri = (src?: string | null) => !!src?.startsWith("data:");
 
 export default function Founder({
   certificates,
@@ -60,88 +57,42 @@ export default function Founder({
   const [preview, setPreview] = useState<string | null>(null);
   const [isFlipped, setIsFlipped] = useState(false);
 
-  /* ──── Compute stats from Firestore props ──── */
+  /* ──── Compute stats from real database props ──── */
   const founderStats = (() => {
-    // Projects count — use Firestore data if available
     const projectList = projects ?? [];
     const projectCount = projectList.length;
 
-    // Tech stacks — aggregate from projects + static skills
     const techSet = new Set<string>();
     projectList.forEach((p) =>
       p.tech?.forEach((t) => {
         if (t && t.trim()) techSet.add(t.trim());
       })
     );
-    staticSkills.forEach((s) =>
-      s.items?.forEach((i) => {
-        if (i.name && i.name.trim()) techSet.add(i.name.trim());
-      })
-    );
     const techCount = techSet.size;
 
-    // Certifications count — static achievements + Firestore certificates
-    const certCount = staticFounderAchievements.length + (certificates?.length ?? staticFounderCertificates.length);
-
-    // Clients count
-    const clientCount = staticClients.length + (projectCount > 0 ? Math.max(0, projectCount - 1) * 2 : 0);
+    const certCount = staticFounderAchievements.length + (certificates?.length ?? 0);
 
     return [
       { n: String(projectCount), l: "projects" },
       { n: String(techCount), l: "tech stacks" },
       { n: String(certCount), l: "certifications" },
-      { n: String(clientCount) + "+", l: "clients" },
     ];
   })();
 
-  /* ──── Build achievements list from Firestore certificates ──── */
+  /* ──── Build achievements list from database certificates ──── */
   const achievements: Achievement[] = (() => {
-    // Always include static achievements (Prestasi)
     const list: Achievement[] = [
       ...staticFounderAchievements.map((a) => ({ ...a, type: "Prestasi" as const })),
     ];
 
-    const seenTitles = new Set<string>();
-
-    // If Firestore certificates are available, use them
-    if (certificates !== undefined) {
+    if (certificates && certificates.length > 0) {
       certificates.forEach((c) => {
-        const titleKey = c.title.toLowerCase().trim();
         list.push({
-          image: c.image,
+          image: c.image || null,
           title: c.title,
           issuer: c.issuer || "",
           year: c.year || "",
           description: c.description || "",
-          type: "Sertifikat" as const,
-        });
-        seenTitles.add(titleKey);
-      });
-
-      // Add static certificates that aren't already in Firestore (dedup by title)
-      staticFounderCertificates.forEach((c) => {
-        const titleKey = c.title.toLowerCase().trim();
-        if (!seenTitles.has(titleKey)) {
-          list.push({
-            image: c.image,
-            title: c.title,
-            issuer: c.issuer || "",
-            year: c.year || "",
-            description: "",
-            type: "Sertifikat" as const,
-          });
-          seenTitles.add(titleKey);
-        }
-      });
-    } else {
-      // Fallback to static certificates when Firestore hasn't loaded yet
-      staticFounderCertificates.forEach((c) => {
-        list.push({
-          image: c.image,
-          title: c.title,
-          issuer: c.issuer || "",
-          year: c.year || "",
-          description: "",
           type: "Sertifikat" as const,
         });
       });
@@ -335,7 +286,7 @@ export default function Founder({
           </p>
 
           {/* Stats Grid */}
-          <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="mt-8 grid grid-cols-3 gap-4">
             {founderStats.map((s) => (
               <div key={s.l} className="rounded-xl border border-zinc-200/40 dark:border-zinc-800/40 bg-white/40 dark:bg-zinc-900/40 p-4 text-center">
                 <span className="block text-2xl font-bold text-red-brand dark:text-red-500">{s.n}</span>
@@ -362,13 +313,13 @@ export default function Founder({
                   {isDataUri(item.image) ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={item.image}
+                      src={item.image || "/images/certificate-default.png"}
                       alt={item.title}
                       className="mb-3 h-28 w-full rounded-xl border border-zinc-200/40 dark:border-zinc-800/40 object-cover select-none"
                     />
                   ) : (
                     <Image
-                      src={item.image}
+                      src={item.image || "/images/certificate-default.png"}
                       alt={item.title}
                       width={600}
                       height={400}
@@ -379,15 +330,15 @@ export default function Founder({
                     <span className="font-label text-[9px] font-semibold uppercase tracking-widest text-red-600 dark:text-red-500">
                       {item.type}
                     </span>
-                    <p className="mt-1.5 text-xs font-semibold text-neutral-900 dark:text-zinc-100 line-clamp-2">
+                    <span className="mt-1.5 text-xs font-semibold text-neutral-900 dark:text-zinc-100 line-clamp-2 block">
                       {item.title}
-                    </p>
-                    <p className="mt-1 text-[11px] text-neutral-500 dark:text-zinc-400 font-medium">
+                    </span>
+                    <span className="mt-1 text-[11px] text-neutral-500 dark:text-zinc-400 font-medium block">
                       {item.issuer}
-                    </p>
-                    <p className="mt-1 text-[10px] text-neutral-400 dark:text-zinc-500 line-clamp-2 leading-relaxed">
+                    </span>
+                    <span className="mt-1 text-[10px] text-neutral-400 dark:text-zinc-500 line-clamp-2 leading-relaxed block">
                       {item.description}
-                    </p>
+                    </span>
                   </div>
                 </button>
               ))}

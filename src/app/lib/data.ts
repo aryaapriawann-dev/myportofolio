@@ -4,6 +4,7 @@ export const skills = [
     items: [
       { name: "React/Next.js", value: 95 },
       { name: "Tailwind CSS", value: 90 },
+      { name: "TypeScript", value: 88 },
     ],
   },
   {
@@ -11,34 +12,28 @@ export const skills = [
     items: [
       { name: "Node/Express", value: 92 },
       { name: "Python/Django", value: 88 },
+      { name: "PostgreSQL / Supabase", value: 85 },
     ],
   },
   {
     title: "AI / ML",
     items: [
       { name: "Computer Vision", value: 90 },
+      { name: "PyTorch / OpenCV", value: 88 },
       { name: "DL / NLP", value: 85 },
     ],
   },
   {
-    title: "Database",
+    title: "Mobile & DevOps",
     items: [
-      { name: "PostgreSQL", value: 85 },
-      { name: "MongoDB", value: 80 },
+      { name: "React Native / Flutter", value: 85 },
+      { name: "Docker / CI/CD", value: 80 },
+      { name: "Cloud (Vercel/Firebase)", value: 88 },
     ],
   },
 ];
 
-// Projects are managed via Admin Dashboard → Firestore. This empty array is kept for backward compatibility.
-export const projects: { name: string; category: string; desc: string; tech: string[]; image?: string }[] = [];
-
-export const timeline = [
-  {
-    q: "2025  Present",
-    title: "Awal Perjalanan SOFTVISION",
-    desc: "SOFTVISION berawal dari eksplorasi teknologi modern, pengembangan berbagai proyek perangkat lunak, serta pembelajaran berkelanjutan di bidang Web Development, Mobile Development, Artificial Intelligence, dan Computer Vision sebagai fondasi membangun solusi digital yang bernilai.",
-  },
-];
+export const timeline: { q: string; title: string; desc: string }[] = [];
 
 export const services = [
   {
@@ -56,13 +51,11 @@ export const services = [
     body: "Rancang bangun aplikasi web modern berkinerja tinggi, responsif, cepat, dan scalable yang mencakup arsitektur frontend dinamis serta infrastruktur backend dan database yang kuat.",
     iconName: "Code2"
   },
-];
-
-export const founderStats = [
-  { n: "45+", l: "projects" },
-  { n: "12", l: "tech stacks" },
-  { n: "15", l: "certifications" },
-  { n: "30+", l: "clients" },
+  {
+    title: "Mobile App Development",
+    body: "Pengembangan aplikasi seluler Android & iOS berkinerja tinggi dengan UI/UX intuitif, responsif, dan terhubung dengan backend cloud.",
+    iconName: "Smartphone"
+  }
 ];
 
 export const founderAchievements = [
@@ -82,46 +75,13 @@ export const founderAchievements = [
   },
   {
     image: "/images/komdigisertifikat.jpeg",
+    title: "Prompt Engineering with Azure OpenAI Service",
     issuer: "Komdigi & Microsoft",
     year: "June 2025",
-    title: "Prompt Engineering with Azure OpenAI Service",
     description: "Completed training on Prompt Engineering using Azure OpenAI Service through the Digital Talent Scholarship Program. Learned best practices for designing effective prompts, optimizing AI-generated responses, and leveraging generative AI technologies for real-world applications and business solutions.",
   },
 ];
 
-export const founderCertificates = [
-  {
-    image: "/images/courserasertifikat.jpeg",
-    title: "TensorFlow Developer",
-    issuer: "Google / Coursera",
-    year: "2023",
-    credentialId: "TF-DEV-XYZ",
-    status: "Issued",
-  },
-  {
-    image: "/images/komdigisertifikat.jpeg",
-    title: "Advanced MLOps",
-    issuer: "Google / DeepLearning.AI",
-    year: "2024",
-    credentialId: "MLOPS-2024",
-    status: "Issued",
-  },
-];
+export const founderCertificates: { image: string; title: string; issuer?: string; year?: string; credentialId?: string; status?: string }[] = [];
 
-export const clients = [
-  "Aero-Tech Systems",
-  "Silicon Peak Lab",
-  "Cloud 9 Systems",
-  "Alpha AI Ltd",
-  "Beta Dev Corp",
-  "Vertex Dynamics",
-  "Quantum Labs",
-  "Horizon Tech",
-  "Nexus Software",
-  "Nova Ventures",
-  "Cyber Security Partners",
-  "Data Flow Corp",
-  "Apex Industrial",
-  "Pioneer Systems",
-  "Future Enterprise",
-];
+export const clients: string[] = [];

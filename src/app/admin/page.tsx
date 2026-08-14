@@ -11,9 +11,10 @@ export default function AdminPage() {
 
   useEffect(() => {
     const isAuth = document.cookie.includes('oft_admin=1');
-    setAuthed(isAuth);
     if (!isAuth) {
       router.replace('/admin/login');
+    } else {
+      Promise.resolve().then(() => setAuthed(true));
     }
   }, [router]);
 

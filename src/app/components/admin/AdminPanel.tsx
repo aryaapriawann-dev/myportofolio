@@ -20,13 +20,13 @@ type Project = {
 
 type Certificate = {
   id: string;
-  image: string;
+  image?: string | null;
   title: string;
-  issuer?: string;
-  year?: string;
-  description?: string;
-  credentialId?: string;
-  status?: string;
+  issuer?: string | null;
+  year?: string | null;
+  description?: string | null;
+  credentialId?: string | null;
+  status?: string | null;
 };
 
 type TimelineItem = {
@@ -105,28 +105,71 @@ const emptyTimeline = (): Omit<TimelineItem, 'id'> => ({
   desc: '',
 });
 
-/* ──────────────────── Image compression (agresif — untuk Firestore) ──────────────────── */
+/* ──────────────────── Image compression (tajam tapi ringan) ──────────────────── */
+// Resolusi default dinaikkan supaya sertifikat tidak blur/pecah.
+// PNG dipertahankan lossless (teks di sertifikat jadi tidak hancur);
+// JPEG dipakai hanya untuk foto/jpg dengan quality tinggi.
 
-const compressImage = (file: File, maxWidth = 320, maxHeight = 240, quality = 0.35): Promise<string> => {
+const compressImage = (
+  file: File,
+  maxWidth = 1024,
+  maxHeight = 1024,
+  quality = 0.82
+): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {
       const img = new window.Image();
       img.src = String(reader.result);
       img.onload = () => {
-        let w = img.width;
-        let h = img.height;
-        if (w / h > maxWidth / maxHeight) {
-          if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
-        } else {
-          if (h > maxHeight) { w = Math.round(w * maxHeight / h); h = maxHeight; }
+        const srcW = img.width;
+        const srcH = img.height;
+        let w = srcW;
+        let h = srcH;
+
+        // Hitung ukuran target dengan mempertahankan rasio aspek
+        if (w > 0 && h > 0) {
+          if (w / h > maxWidth / maxHeight) {
+            if (w > maxWidth) { h = Math.round((h * maxWidth) / w); w = maxWidth; }
+          } else {
+            if (h > maxHeight) { w = Math.round((w * maxHeight) / h); h = maxHeight; }
+          }
         }
+
         const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
+        canvas.width = w;
+        canvas.height = h;
         const ctx = canvas.getContext('2d');
         if (!ctx) { reject(new Error('canvas error')); return; }
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', quality));
+
+        // Latar putih supaya PNG transparan tidak jadi hitam saat di-compress
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, w, h);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        // Multi-step downscale untuk hasil lebih tajam (hindari blur blocky)
+        let stepW = srcW;
+        let stepH = srcH;
+        const tmp = document.createElement('canvas');
+        const tctx = tmp.getContext('2d');
+        if (!tctx) { reject(new Error('canvas error')); return; }
+        let curSrc: CanvasImageSource = img;
+        while (stepW / 2 > w || stepH / 2 > h) {
+          stepW = Math.max(w, Math.floor(stepW / 2));
+          stepH = Math.max(h, Math.floor(stepH / 2));
+          tmp.width = stepW;
+          tmp.height = stepH;
+          tctx.imageSmoothingEnabled = true;
+          tctx.imageSmoothingQuality = 'high';
+          tctx.drawImage(curSrc, 0, 0, stepW, stepH);
+          curSrc = tmp;
+        }
+        ctx.drawImage(curSrc, 0, 0, w, h);
+
+        // PNG (transparansi/teks) → lossless; sisanya → JPEG kualitas tinggi
+        const isPng = file.type === 'image/png';
+        resolve(isPng ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', quality));
       };
       img.onerror = () => reject(new Error('image load error'));
     };
@@ -137,7 +180,7 @@ const compressImage = (file: File, maxWidth = 320, maxHeight = 240, quality = 0.
 
 /* ──────────────────── Helper: is image a data URI? ──────────────────── */
 
-const isDataUri = (src?: string) => src?.startsWith('data:');
+const isDataUri = (src?: string | null) => !!src?.startsWith('data:');
 
 /* ══════════════════════════════════════════════════════════════
    MAIN ADMIN PANEL
@@ -245,8 +288,18 @@ export default function AdminPanel() {
       liveUrl: data.liveUrl,
       githubUrl: data.githubUrl,
     };
-    const { error } = await supabase.from('projects').insert([payload]);
-    if (error) console.error('addProject error:', error);
+    const { data: insertedData, error } = await supabase.from('projects').insert([payload]).select();
+    if (error) {
+      const msg = error.message;
+      console.error('addProject error:', error);
+      alert(`Gagal menyimpan proyek: ${msg}\n\nPastikan schema SQL (supabase/schema.sql) sudah dijalankan di Supabase Dashboard.`);
+    } else {
+      const newItem = (insertedData && insertedData[0]) ? insertedData[0] : payload;
+      setProjects((prev) => [newItem, ...prev]);
+      // Re-fetch agar tampilan konsisten (fallback bila realtime belum terpicu)
+      const { data: fresh } = await supabase.from('projects').select('*');
+      if (fresh) setProjects(fresh);
+    }
   }, []);
 
   const updateProject = useCallback(async (item: Project) => {
@@ -260,46 +313,82 @@ export default function AdminPanel() {
       githubUrl: item.githubUrl,
     };
     const { error } = await supabase.from('projects').update(payload).eq('id', item.id);
-    if (error) console.error('updateProject error:', error);
+    if (error) {
+      console.error('updateProject error:', error);
+    } else {
+      setProjects((prev) => prev.map((p) => (p.id === item.id ? { ...p, ...payload } : p)));
+    }
   }, []);
 
   const deleteProject = useCallback(async (id: string) => {
-    await supabase.from('projects').delete().eq('id', id);
+    const { error } = await supabase.from('projects').delete().eq('id', id);
+    if (error) {
+      console.error('deleteProject error:', error);
+    } else {
+      setProjects((prev) => prev.filter((p) => p.id !== id));
+    }
   }, []);
 
   /* ──── Supabase CRUD: Certificates ──── */
   const addCertificate = useCallback(async (data: Omit<Certificate, 'id'>) => {
-    const id = `cert-${Date.now()}`;
+    const id = `cert-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const payload = {
       id,
       title: data.title,
-      issuer: data.issuer,
-      year: data.year,
-      description: data.description,
-      image: data.image,
-      credentialId: data.credentialId,
-      status: data.status,
+      issuer: data.issuer || null,
+      year: data.year || null,
+      description: data.description || null,
+      image: data.image || null,
+      credentialId: data.credentialId || null,
+      status: data.status || null,
     };
-    const { error } = await supabase.from('certificates').insert([payload]);
-    if (error) console.error('addCertificate error:', error);
+    const { data: insertedData, error } = await supabase.from('certificates').insert([payload]).select();
+    if (error) {
+      const msg = error.message;
+      console.error('addCertificate error:', error);
+      alert(`Gagal menyimpan sertifikat: ${msg}\n\nPastikan schema SQL (supabase/schema.sql) sudah dijalankan di Supabase Dashboard dan tabel "certificates" ada.`);
+    } else {
+      const newItem = (insertedData && insertedData[0]) ? insertedData[0] : payload;
+      setCertificates((prev) => [newItem, ...prev]);
+      // Re-fetch agar tampilan (admin + homepage via realtime) konsisten
+      const { data: fresh } = await supabase.from('certificates').select('*');
+      if (fresh) setCertificates(fresh);
+    }
   }, []);
 
   const updateCertificate = useCallback(async (item: Certificate) => {
     const payload = {
       title: item.title,
-      issuer: item.issuer,
-      year: item.year,
-      description: item.description,
-      image: item.image,
-      credentialId: item.credentialId,
-      status: item.status,
+      issuer: item.issuer || null,
+      year: item.year || null,
+      description: item.description || null,
+      image: item.image || null,
+      credentialId: item.credentialId || null,
+      status: item.status || null,
     };
     const { error } = await supabase.from('certificates').update(payload).eq('id', item.id);
-    if (error) console.error('updateCertificate error:', error);
+    if (error) {
+      const msg = error.message;
+      console.error('updateCertificate error:', error);
+      alert(`Gagal memperbarui sertifikat: ${msg}`);
+    } else {
+      setCertificates((prev) => prev.map((c) => (c.id === item.id ? { ...c, ...payload } : c)));
+      const { data: fresh } = await supabase.from('certificates').select('*');
+      if (fresh) setCertificates(fresh);
+    }
   }, []);
 
   const deleteCertificate = useCallback(async (id: string) => {
-    await supabase.from('certificates').delete().eq('id', id);
+    const { error } = await supabase.from('certificates').delete().eq('id', id);
+    if (error) {
+      const msg = error.message;
+      console.error('deleteCertificate error:', error);
+      alert(`Gagal menghapus sertifikat: ${msg}`);
+    } else {
+      setCertificates((prev) => prev.filter((c) => c.id !== id));
+      const { data: fresh } = await supabase.from('certificates').select('*');
+      if (fresh) setCertificates(fresh);
+    }
   }, []);
 
   /* ──── Supabase CRUD: Timeline ──── */
@@ -311,8 +400,17 @@ export default function AdminPanel() {
       title: data.title,
       desc: data.desc,
     };
-    const { error } = await supabase.from('timeline').insert([payload]);
-    if (error) console.error('addTimelineItem error:', error);
+    const { data: insertedData, error } = await supabase.from('timeline').insert([payload]).select();
+    if (error) {
+      const msg = error.message;
+      console.error('addTimelineItem error:', error);
+      alert(`Gagal menyimpan timeline: ${msg}`);
+    } else {
+      const newItem = (insertedData && insertedData[0]) ? insertedData[0] : payload;
+      setTimeline((prev) => [newItem, ...prev]);
+      const { data: fresh } = await supabase.from('timeline').select('*');
+      if (fresh) setTimeline(fresh);
+    }
   }, []);
 
   const updateTimelineItem = useCallback(async (item: TimelineItem) => {
@@ -322,11 +420,20 @@ export default function AdminPanel() {
       desc: item.desc,
     };
     const { error } = await supabase.from('timeline').update(payload).eq('id', item.id);
-    if (error) console.error('updateTimelineItem error:', error);
+    if (error) {
+      console.error('updateTimelineItem error:', error);
+    } else {
+      setTimeline((prev) => prev.map((t) => (t.id === item.id ? { ...t, ...payload } : t)));
+    }
   }, []);
 
   const deleteTimelineItem = useCallback(async (id: string) => {
-    await supabase.from('timeline').delete().eq('id', id);
+    const { error } = await supabase.from('timeline').delete().eq('id', id);
+    if (error) {
+      console.error('deleteTimelineItem error:', error);
+    } else {
+      setTimeline((prev) => prev.filter((t) => t.id !== id));
+    }
   }, []);
 
   /* ──── Logout ──── */
