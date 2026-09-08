@@ -1,7 +1,27 @@
 # Audit Keamanan — SOFTVISION Website (portofolio-arya-apriawan.web.app)
 
 Tanggal: 8 September 2026
-Status: SEMUA temuan di bawah sudah diverifikasi langsung terhadap build `out/`, situs live, dan API Supabase (probe write/delete sudah dibersihkan).
+Status temuan: SEMUA diverifikasi langsung terhadap build `out/`, situs live, dan API Supabase.
+
+## STATUS PERBAIKAN (commit 13442e3, sudah push ke GitHub)
+
+Sudah diperbaiki di kode:
+- [x] K1/K3 — Login admin kini memakai Supabase Auth (verifikasi server);
+      `NEXT_PUBLIC_ADMIN_PASSWORD` dan cookie `oft_admin` dihapus total.
+      Password lama tidak ada lagi di build baru (terverifikasi grep di `out/`).
+- [x] T2 — `/api/send-contact`, dependensi `resend`, `RESEND_API_KEY` dihapus.
+- [x] T4 — `firestore.rules` & binding Firestore di `firebase.json` dihapus.
+- [x] M4 — `middleware.ts.bak`, `lib/firebase.ts`, `grant-quick.sql`, `grant-only.sql` dihapus.
+- [x] T1 (sebagian) — form kontak lewat RPC `submit_contact` (validasi + rate limit per IP).
+- [x] M2 — security headers (CSP dll.) ditambahkan di `firebase.json`.
+- [x] M3 — kebijakan realtime kini tunduk RLS setelah hardening.
+
+MENUNGGU DUA LANGKAH MANUAL (butuh akses akun Anda, lihat bagian "LANGKAH AKHIR"):
+1. Jalankan `supabase/hardening.sql` di Supabase Dashboard (menutup K2/K4 di database).
+2. Deploy ulang hosting (kode baru). Akun Firebase CLI yang tersimpan
+   (aryazeinputri@gmail.com) TIDAK punya akses project `portofolio-arya-apriawan` (HTTP 403).
+3. Buat akun admin di Supabase → Authentication → Add user (email + password kuat).
+   Tanpa ini tidak ada yang bisa login admin.
 
 ---
 
