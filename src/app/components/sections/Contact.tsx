@@ -3,6 +3,7 @@
 import { Mail, Rocket, Phone, Camera, Globe } from "lucide-react";
 import { useState } from "react";
 import emailjs from "@emailjs/browser";
+import { supabase } from "@/app/lib/supabase";
 
 // ── EmailJS config ──────────────────────────────────────────
 // Menggunakan environment variables Next.js, dengan fallback default yang aman
@@ -26,7 +27,19 @@ export default function Contact() {
     setIsLoading(true);
     setSubmitStatus(null);
 
-    // 1. Kirim email via EmailJS
+    // 1. Simpan ke database lewat RPC aman (validasi + rate-limit di server DB)
+    try {
+      const { error: dbError } = await supabase.rpc("submit_contact", {
+        p_name: formData.name,
+        p_email: formData.email,
+        p_message: formData.message,
+      });
+      if (dbError) console.error("contact save error:", dbError);
+    } catch (err) {
+      console.error("contact save error:", err);
+    }
+
+    // 2. Kirim email via EmailJS
     try {
       if (EMAILJS_PUBLIC_KEY && EMAILJS_PUBLIC_KEY !== "YOUR_PUBLIC_KEY") {
         await emailjs.send(

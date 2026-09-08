@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { supabase } from '@/app/lib/supabase';
+import { supabase, isAdminSession } from '@/app/lib/supabase';
 
 /* ──────────────────── Types ──────────────────── */
 
@@ -198,21 +198,23 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(false);
   const seededRef = useRef(false);
 
-  /* ──── Auth guard ──── */
+  /* ──── Auth guard (real Supabase session, verified via JWT) ──── */
+  const [authed, setAuthed] = useState<boolean | null>(null);
   useEffect(() => {
     if (hasCheckedAuthRef.current) return;
     hasCheckedAuthRef.current = true;
 
-    const isAuth = typeof document !== 'undefined' ? document.cookie.includes('oft_admin=1') : false;
-    if (!isAuth) {
-      try { router.replace('/admin/login'); } catch { /* ignore */ }
-    }
+    isAdminSession().then((ok) => {
+      setAuthed(ok);
+      if (!ok) {
+        try { router.replace('/admin/login'); } catch { /* ignore */ }
+      }
+    });
   }, [router]);
 
   /* ──── Real-time Supabase listeners & fetching ──── */
   useEffect(() => {
-    const isAuth = typeof document !== 'undefined' ? document.cookie.includes('oft_admin=1') : false;
-    if (!isAuth) return;
+    if (!authed) return;
 
     const fetchAll = async () => {
       setLoading(true);
@@ -246,7 +248,7 @@ export default function AdminPanel() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [authed]);
 
   /* ──── One-time seed if all tables empty ──── */
   useEffect(() => {
@@ -436,17 +438,13 @@ export default function AdminPanel() {
     }
   }, []);
 
-  /* ──── Logout ──── */
-  const handleLogout = () => {
-    if (typeof document !== 'undefined') {
-      document.cookie = 'oft_admin=1; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    }
+  /* ──── Logout (real server-side session termination) ──── */
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     router.replace('/admin/login');
   };
 
-  const isAuth = typeof document !== 'undefined' ? document.cookie.includes('oft_admin=1') : false;
-
-  if (!isAuth) {
+  if (!authed) {
     return (
       <div className="flex min-h-screen items-center justify-center text-neutral-500">
         Mengalihkan ke halaman login...

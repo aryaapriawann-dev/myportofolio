@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { Eye, EyeOff, Lock, ShieldCheck } from 'lucide-react';
+import { supabase } from '@/app/lib/supabase';
 
 /* ── Canvas meteor background ───────────────────────── */
 function MeteorCanvas() {
@@ -166,6 +167,7 @@ function MeteorCanvas() {
 /* ── Main Login Page ─────────────────────────────────── */
 export default function AdminLogin() {
   const router = useRouter();
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
@@ -175,15 +177,16 @@ export default function AdminLogin() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 600)); // small delay for feel
-    const envPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
-    const ok = typeof envPassword === 'string' && envPassword.length > 0 && password === envPassword;
-    if (ok) {
-      document.cookie = 'oft_admin=1; path=/; max-age=86400';
-      router.push('/admin');
-    } else {
-      setError('Password salah. Coba lagi.');
+    // Server-side verification via Supabase Auth (email + password).
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+    if (signInError) {
+      setError('Email atau password salah.');
       setLoading(false);
+    } else {
+      router.push('/admin');
     }
   };
 
@@ -259,6 +262,21 @@ export default function AdminLogin() {
           <form onSubmit={onSubmit} className="space-y-5">
             <div>
               <label className="font-label text-[9px] font-bold uppercase tracking-widest text-zinc-400 mb-2 block">
+                Email Admin
+              </label>
+              <input
+                type="email"
+                placeholder="email@admin.com"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-zinc-600 outline-none transition focus:border-red-500/60 focus:ring-2 focus:ring-red-500/20 backdrop-blur"
+                required
+                disabled={loading}
+                autoComplete="username"
+              />
+            </div>
+            <div>
+              <label className="font-label text-[9px] font-bold uppercase tracking-widest text-zinc-400 mb-2 block">
                 Password
               </label>
               <div className="relative">
@@ -295,7 +313,7 @@ export default function AdminLogin() {
 
             <motion.button
               type="submit"
-              disabled={loading || !password}
+              disabled={loading || !email || !password}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-red-600 to-red-500 px-5 py-3 text-sm font-bold tracking-widest text-white shadow-lg shadow-red-900/30 transition disabled:opacity-50 disabled:cursor-not-allowed"

@@ -6,4 +6,16 @@ const supabaseAnonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   "";
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+  },
+});
+
+/** True only when a REAL Supabase session exists (JWT signed by server). */
+export async function isAdminSession(): Promise<boolean> {
+  const { data } = await supabase.auth.getSession();
+  return !!data.session?.user;
+}

@@ -4,18 +4,21 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminPanel from '@/app/components/admin/AdminPanel';
 import FloatingLines3D from '@/app/components/backgrounds/FloatingLines3D';
+import { isAdminSession } from '@/app/lib/supabase';
 
 export default function AdminPage() {
   const router = useRouter();
   const [authed, setAuthed] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const isAuth = document.cookie.includes('oft_admin=1');
-    if (!isAuth) {
-      router.replace('/admin/login');
-    } else {
-      Promise.resolve().then(() => setAuthed(true));
-    }
+    // Real session check: Supabase JWT issued by the auth server.
+    isAdminSession().then((ok) => {
+      if (!ok) {
+        router.replace('/admin/login');
+      } else {
+        setAuthed(true);
+      }
+    });
   }, [router]);
 
   if (!authed) {
