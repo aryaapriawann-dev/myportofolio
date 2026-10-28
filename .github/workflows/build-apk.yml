@@ -43,15 +43,20 @@ jobs:
           NEXT_PUBLIC_CONTACT_EMAIL: ${{ secrets.NEXT_PUBLIC_CONTACT_EMAIL }}
         run: npm run build
 
-      - name: Grant execute permission for gradlew
+      - name: Configure Android SDK and Permissions
         run: |
+          echo "sdk.dir=/usr/local/lib/android/sdk" > android/local.properties
           sed -i 's/\r$//' android/gradlew
           chmod +x android/gradlew
 
-      - name: Sync Capacitor Android
-        run: npx @capacitor/cli sync android
+      - name: Sync Web Assets to Android
+        run: |
+          npx @capacitor/cli copy android
 
       - name: Build Debug APK with Gradle
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
         run: |
           cd android
           ./gradlew assembleDebug --no-daemon --stacktrace
