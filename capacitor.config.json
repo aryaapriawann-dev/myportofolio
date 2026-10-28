@@ -1,0 +1,8 @@
+{
+  "appId": "com.softvision.app",
+  "appName": "Softvision",
+  "webDir": "out",
+  "server": {
+    "androidScheme": "https"
+  }
+}

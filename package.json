@@ -7,10 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "cap:sync": "next build && cap sync android",
+    "cap": "cap",
+    "cap:sync": "cap sync android",
     "cap:open": "cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
     "@capacitor/core": "^8.5.3",
     "@emailjs/browser": "^4.4.1",
     "@supabase/ssr": "^0.12.4",
@@ -23,8 +26,6 @@
     "three": "^0.184.0"
   },
   "devDependencies": {
-    "@capacitor/android": "^8.5.3",
-    "@capacitor/cli": "^8.5.3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
