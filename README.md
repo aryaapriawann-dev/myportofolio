@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚀 Softvision — Crafted Digital
 
-## Getting Started
+Website resmi dan Aplikasi Mobile dari **Softvision** (Software house yang menggabungkan sistem clean, cinematic UI, dan AI-first).
 
-First, run the development server:
+---
+
+## 📱 Panduan Download & Install Aplikasi Android (APK)
+
+Kamu bisa langsung mencoba aplikasi Softvision di smartphone Android kamu tanpa perlu setup coding apapun!
+
+### Langkah 1: Download File APK dari GitHub
+1. Buka link rilis resmi kami langsung melalui browser di HP Android kamu:
+   👉 **[Download Softvision APK Terbaru](https://github.com/aryaapriawann-dev/myportofolio/releases)**
+2. Cari rilis terbaru dengan judul **`Softvision Android App (Latest APK)`**.
+3. Di bagian **Assets** (klik panah kecil jika tertutup), klik file **`Softvision-debug.apk`**.
+4. Jika browser menampilkan peringatan *"File ini mungkin berbahaya"* atau *"File might be harmful"*, klik **Tetap Download (Download anyway)**.  
+   *(Catatan: Peringatan ini wajar karena aplikasi diunduh langsung dari GitHub / belum terdaftar di Google Play Store).*
+
+---
+
+### Langkah 2: Cara Install di HP Android
+1. Setelah proses download selesai, buka notifikasi unduhan atau buka aplikasi **File Manager (Pengelola File)** ➔ masuk ke folder **Download**.
+2. Klik file **`Softvision-debug.apk`**.
+3. **Jika muncul izin "Sumber Tidak Dikenal" (Unknown Sources):**
+   - Klik **Setelan (Settings)** pada pop-up yang muncul.
+   - Nyalakan saklar **Izinkan dari sumber ini (Allow from this source)** untuk browser atau File Manager kamu.
+   - Tekan tombol kembali (Back), lalu klik **Instal (Install)**.
+4. **Jika muncul peringatan Google Play Protect:**
+   - Klik **Rincian lebih lanjut (More details)**.
+   - Klik **Tetap instal (Install anyway)**.
+5. Tunggu proses instalasi beberapa detik hingga selesai.
+6. Klik **Buka (Open)** — Aplikasi Softvision siap digunakan di HP kamu! 🎉
+
+---
+
+## 💻 Pengembangan Lokal (Web Development)
+
+Jika ingin menjalankan versi web di komputer:
 
 ```bash
+# 1. Install dependencies
+npm install
+
+# 2. Jalankan server lokal
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Buka [http://localhost:3000](http://localhost:3000) di browser untuk melihat hasilnya.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📲 Build Versi Android Manual (Opsional)
 
-## Learn More
+Jika ingin melakukan sync ke project Android lokal:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+# Build web dan sync ke Android
+npm run cap:sync
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Buka project di Android Studio (jika terinstall)
+npm run cap:open
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+File APK baru juga akan otomatis di-build oleh **GitHub Actions** setiap kali kamu melakukan `git push origin main`.
