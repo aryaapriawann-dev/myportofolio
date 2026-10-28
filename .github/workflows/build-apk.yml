@@ -26,10 +26,10 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Set up Node.js 20
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install Node dependencies
@@ -51,7 +51,9 @@ jobs:
 
       - name: Sync Web Assets to Android
         run: |
-          npx @capacitor/cli copy android
+          mkdir -p android/app/src/main/assets/public
+          cp -r out/* android/app/src/main/assets/public/
+          cp capacitor.config.json android/app/src/main/assets/capacitor.config.json
 
       - name: Build Debug APK with Gradle
         env:
