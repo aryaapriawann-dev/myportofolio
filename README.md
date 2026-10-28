@@ -4,38 +4,31 @@ Website resmi dan Aplikasi Mobile dari **Softvision** (Software house yang mengg
 
 ---
 
-## 📱 Panduan Download & Install Aplikasi Android (APK)
+## 📥 DOWNLOAD APLIKASI ANDROID (TINGGAL KLIK)
 
-Kamu bisa langsung mencoba aplikasi Softvision di smartphone Android kamu tanpa perlu setup coding apapun!
+Tinggal pencet tombol atau link di bawah ini langsung dari HP Android kamu:
 
-### Langkah 1: Download File APK dari GitHub
-1. Buka link rilis resmi kami langsung melalui browser di HP Android kamu:
-   👉 **[Download Softvision APK Terbaru](https://github.com/aryaapriawann-dev/myportofolio/releases)**
-2. Cari rilis terbaru dengan judul **`Softvision Android App (Latest APK)`**.
-3. Di bagian **Assets** (klik panah kecil jika tertutup), klik file **`Softvision-debug.apk`**.
-4. Jika browser menampilkan peringatan *"File ini mungkin berbahaya"* atau *"File might be harmful"*, klik **Tetap Download (Download anyway)**.  
-   *(Catatan: Peringatan ini wajar karena aplikasi diunduh langsung dari GitHub / belum terdaftar di Google Play Store).*
+[![Download APK](https://img.shields.io/badge/📥_DOWNLOAD_APK-SOFTVISION_ANDROID-brightgreen?style=for-the-badge&logo=android&logoColor=white)](https://github.com/aryaapriawann-dev/myportofolio/releases/latest/download/Softvision-debug.apk)
+
+### 👉 [KLIK DI SINI UNTUK LANGSUNG DOWNLOAD APK](https://github.com/aryaapriawann-dev/myportofolio/releases/latest/download/Softvision-debug.apk) 👈
+
+*(Alternatif jika ingin lihat daftar semua versi: [Halaman Rilis GitHub](https://github.com/aryaapriawann-dev/myportofolio/releases))*
 
 ---
 
-### Langkah 2: Cara Install di HP Android
-1. Setelah proses download selesai, buka notifikasi unduhan atau buka aplikasi **File Manager (Pengelola File)** ➔ masuk ke folder **Download**.
-2. Klik file **`Softvision-debug.apk`**.
-3. **Jika muncul izin "Sumber Tidak Dikenal" (Unknown Sources):**
-   - Klik **Setelan (Settings)** pada pop-up yang muncul.
-   - Nyalakan saklar **Izinkan dari sumber ini (Allow from this source)** untuk browser atau File Manager kamu.
-   - Tekan tombol kembali (Back), lalu klik **Instal (Install)**.
-4. **Jika muncul peringatan Google Play Protect:**
-   - Klik **Rincian lebih lanjut (More details)**.
-   - Klik **Tetap instal (Install anyway)**.
-5. Tunggu proses instalasi beberapa detik hingga selesai.
-6. Klik **Buka (Open)** — Aplikasi Softvision siap digunakan di HP kamu! 🎉
+## 📱 Cara Install di HP Android (Setelah Download):
+
+1. Buka file **`Softvision-debug.apk`** yang sudah selesai diunduh di HP kamu (ada di folder **Download**).
+2. Jika muncul tulisan **"Demi keamanan, ponsel tidak diizinkan memasang aplikasi dari sumber ini"**:
+   - Klik **Setelan (Settings)** ➔ Aktifkan **Izinkan dari sumber ini (Allow from this source)**.
+   - Tekan tombol **Kembali (Back)**, lalu pilih **Instal (Install)**.
+3. Jika muncul pop-up Google Play Protect:
+   - Klik **Rincian lebih lanjut (More details)** ➔ Klik **Tetap instal (Install anyway)**.
+4. Selesai! Klik **Buka (Open)** dan aplikasi Softvision siap digunakan. 🎉
 
 ---
 
 ## 💻 Pengembangan Lokal (Web Development)
-
-Jika ingin menjalankan versi web di komputer:
 
 ```bash
 # 1. Install dependencies
@@ -51,8 +44,6 @@ Buka [http://localhost:3000](http://localhost:3000) di browser untuk melihat has
 
 ## 📲 Build Versi Android Manual (Opsional)
 
-Jika ingin melakukan sync ke project Android lokal:
-
 ```bash
 # Build web dan sync ke Android
 npm run cap:sync
@@ -61,4 +52,4 @@ npm run cap:sync
 npm run cap:open
 ```
 
-File APK baru juga akan otomatis di-build oleh **GitHub Actions** setiap kali kamu melakukan `git push origin main`.
+File APK baru otomatis diperbarui oleh **GitHub Actions** setiap kali kamu melakukan `git push origin main`.

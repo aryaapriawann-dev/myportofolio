@@ -90,6 +90,7 @@ jobs:
             *Otomatis di-build oleh GitHub Actions dari commit: `${{ github.sha }}`*
           draft: false
           prerelease: false
+          make_latest: true
           files: build-output/Softvision-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
